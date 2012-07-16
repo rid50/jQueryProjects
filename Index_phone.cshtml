@@ -1,0 +1,234 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="initial-scale=1,maximum-scale=1,minimum-scale=1 user-scalable=no,width=320" />
+        <meta name="viewport" content="width=device-width; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;" /> 
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js" type="text/javascript"></script>
+        <script src="@Url.Content("~/Scripts/jqTouch/jqtouch.js")" type="text/javascript" charset="utf-8"></script>
+    	<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js" type="text/javascript"></script>
+        <script type="text/javascript">
+            (function ($) {
+                $(document).ready(function () {
+                    $.jQTouch({
+                        statusBar: 'gray',
+                        useFastTouch: 'true'
+                        //icon: 'icon.png',
+                        //startupScreen: 'startup.png'
+                    });
+                });
+            })(jQuery);
+        </script>
+
+        <script type="text/javascript">
+            var userAgent = navigator.userAgent.toLowerCase();
+            var isiPhone = (userAgent.indexOf('iphone') != -1 || userAgent.indexOf('ipod') != -1) ? true : false;
+            clickEvent = isiPhone ? 'tap' : 'click';
+        </script>
+
+        <script src="@Url.Content("~/Scripts/jqGridJs/i18n/grid.locale-en.js")" type="text/javascript"></script>
+        <script src="@Url.Content("~/Scripts/jqGridJs/jquery.jqGrid.min.js")" type="text/javascript"></script>
+        
+        <script type="text/javascript">
+            (function ($) {
+                $(function () {
+                    $("#contract-list").submit(function (event, info) {
+                        //debugger;
+                        var searchText = $("input[id=search-text]", this);
+                        searchText.blur();
+
+                        jQuery('#grid').setGridParam({ url: '@Url.Content("~/Contracts/List")' + "?search=" + searchText.val(), page: 1 }).trigger("reloadGrid");
+                        return false;
+                    });
+                });
+            })(jQuery);
+        </script>
+        <script src="@Url.Content("~/Scripts/ContractsPhone.js")" type="text/javascript"></script>
+
+        <link href="@Url.Content("~/Content/jqtouch.css")" rel="stylesheet" type="text/css" />
+        <link href="@Url.Content("~/Content/themes/jqt/theme.min.css")" rel="stylesheet" type="text/css" />
+        <link href="@Url.Content("~/Content/jqGridCss/ui.jqgrid.css")" rel="stylesheet" type="text/css" />
+        <link href="@Url.Content("~/Content/jqGridCss/redmond/jquery-ui-1.8.16.custom.css")" rel="stylesheet" type="text/css" />
+
+        <title>Sales BackOffice</title>
+    </head>
+
+    <body class="landscape" style="font-size:smaller;">
+        <div id="home" class="current">
+            <div class="toolbar">
+                <h1 style="width:auto">Sales BackOffice</h1>
+            </div>
+            <ul class="rounded">
+                <!--li class="arrow"><a href="#search">Search</a></li-->
+                <li class="arrow"><a id="clist" href="#contract-list">Contract List</a></li>
+                <li class="arrow"><a id="rlist" href="#report-list">التقرير قائمة</a></li>
+            </ul>
+        </div>
+
+        <form id="contract-list" action="">
+            <div class="toolbar">
+                <h1>Contract List</h1>
+                <a href="#" class="back">Back</a>
+            </div>
+            <div>
+                <ul class="rounded">
+                    <li>
+                        <!--label for="search-text" style="float:left; display:block;">Search: </label-->
+                        <input type="text" name="search-text" placeholder="Search" id="search-text" 
+                                style="margin-left:4px; margin-top:8px; float:left; width:150px; color:White;"/>
+                        <input type="submit" value="Submit" style="margin-left:12px; margin-top:2px;"/>
+                    </li>
+                </ul>
+            </div>
+            <div id="myjqGrid">
+                <table id="grid" role="@Url.Content("~")"></table>
+                <div id="pager"></div>
+            </div>
+
+            <ul class="rounded" id="alert" style="display:none">
+                <li id="alertContent" style="color:Red"></li>
+            </ul>
+
+        </form>
+
+        <div id="report-list" style="display:none">
+            <div class="toolbar">
+                <h1>تقارير</h1>
+                <a href="#" class="back">Back</a>
+            </div>
+            <ul class="edgetoedge" id="reports">
+                <!--<li><a href="xps/r_contract_stat-عقد إحصائية.pdf" rel="external">عقد إحصائية</a></li>
+                <li><a href="xps/r_payment_accounting-شــهــادة دفـــع.pdf" rel="external">شــهــادة دفـــع</a></li-->
+                <!--li class="sep"></li-->
+            </ul>
+
+            <!--
+            <div id="info">--- </div>
+            <script type="text/javascript">
+                $('#info').text(clickEvent + " --- ");
+            </script>
+            -->
+            <script type="text/javascript">
+                (function ($) {
+                    $(function () {
+                        var lis = $("#reports", this).empty();
+                        //results.append($("<li>", {
+                        //    "class": "sep"
+                        //text: 'Report Results'
+                        //}));
+
+                        $.get('@Url.Content("~/Reports/List")',
+                        //{ value: text.val() },
+                            function (data) {
+                                $.each(data, function (i, report) {
+                                    //var str = report.fileName + ' - ' + report.filePath;
+                                    var str = '<a class="rlinks" id="a' + i + '"' + ' href="' + report.filePath + '" rel="external">' + report.fileName + '</a>';
+                                    //var str = '<a class="rlinks" href="' + report.filePath + '" rel="external">' + report.fileName + '</a>';
+                                    $("<li>").append(str).appendTo(lis);
+                                });
+
+                                $('.rlinks').bind('click', function (e) {
+                                    //$('#info').text($('#info').text() + " /link " + this.id);
+                                    if (tapped && !(jQuery.browser.msie || jQuery.browser.webkit || jQuery.browser.mozilla))
+                                        e.preventDefault();
+
+                                    tapped = false;
+                                    //return true;
+                                });
+
+                            }, 'json'
+                        );
+                    });
+                })(jQuery);
+            </script>
+
+        </div>
+
+        <script type="text/javascript">
+            var tapped = false;
+            $(function () {
+                $('#rlist').bind('tap', function (e) {
+                    tapped = true;
+                    //$body.removeClass('profile landscape').addClass(orientation).trigger('turn', { orientation: orientation });
+                    //$.jQTouch.orientation = 'portrait';
+                    //$('#rlist').tap(function (e) {
+                    //$('#info').text($('#info').text() + " /tap " + this.id);
+                    if (e.preventDefault) { e.preventDefault() }
+                    //e.preventDefault();
+                    //alert('Yay! You just ' + clickEvent + 'ed me!');
+                    return true;
+                });
+            });
+        </script>
+@*
+        <script type="text/javascript">
+            $(function () {
+                //var height2 = '100px';
+                $('#alert').dialog({
+                    autoOpen: false,
+                    show: "slide",
+                    hide: "fadeOut",
+                    //width: bodyWidth,
+                    resizable: false,
+                    //height: 100,
+                    //width: 240,
+                    //8position: ['left', 'top'],
+                    //position: ['center'],
+                    modal: true,
+                    //title: '<span style="float:left; font-family:\'Trebuchet MS\'; font-style:oblique; font-size: 1.5em; margin-left:20px; margin-top:4px;">Server Error</span>',
+                    buttons: {
+                        Close: function () {
+                            $(this).dialog("close");
+                        }
+                    },
+                    close: function (event, ui) {
+                        //$('#button_wizard').fadeIn(100);
+                    }
+                });
+
+                $('.ui-widget-overlay').live("click", function () {
+                    $("#alert").dialog("close");
+                });
+
+            });
+        </script>
+
+        <div id="alert" style="display:none">
+            <div id="alertContent"></div>
+        </div>
+        
+        <style type="text/css" media="screen">
+            .ui-widget-overlay {
+                position: fixed;  /* <---------- Fix for jQuery Dialog (avoids appearing of browser's scroll bars) */
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+            }
+            
+            .ui-dialog { display:block; box-shadow: 2px 2px 4px #888; -moz-box-shadow: 2px 2px 4px #888; -webkit-box-shadow: 2px 2px 4px #888; }
+            .ui-dialog { position: absolute; padding: .2em; width: 300px; overflow: hidden; }
+            .ui-dialog .ui-dialog-titlebar { padding: .4em 1em; position: relative; display:none;}
+            /*
+            .ui-dialog .ui-dialog-title { float: left; margin: .1em 16px .1em 0; }
+            .ui-dialog .ui-dialog-titlebar-close { position: absolute; right: .3em; top: 50%; width: 19px; margin: -10px 0 0 0; padding: 1px; height: 18px; }
+            .ui-dialog .ui-dialog-titlebar-close span { display: block; margin: 1px; }
+            .ui-dialog .ui-dialog-titlebar-close:hover, .ui-dialog .ui-dialog-titlebar-close:focus { padding: 0; }
+            .ui-dialog .ui-dialog-content { position: relative; border: 0; padding: .5em 1em; background: none; overflow: auto; zoom: 1; }
+            */
+            .ui-dialog .ui-dialog-buttonpane { text-align: left; border-width: 1px 0 0 0; background-image: none; margin: 0; padding: 0; border: 0;}
+            .ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset { text-align:center; padding: 0.5em}
+
+            /*.ui-dialog .ui-dialog-buttonpane button { margin: 0; cursor: pointer; text-align:center;width:100%; padding:10px 0px;background: #09F;border-radius: 8px;color: white;border-style: solid;border-color: #CCC;}*/
+            /*.ui-dialog .ui-resizable-se { width: 14px; height: 14px; right: 3px; bottom: 3px; }*/
+            /*.ui-draggable .ui-dialog-titlebar { cursor: move;}*/
+        </style>
+*@
+    </body>
+</html>
