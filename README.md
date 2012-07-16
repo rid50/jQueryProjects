@@ -12,5 +12,5 @@ Sales BackOffice (Windows Azure)	http://yaruss.org/sb
 http://yaruss.org
 
 Mobile version:
-http://yaruss.org/sb/phone		jQuery Mobile Touch (jGrid - English UI)
-http://yaruss.org/faiha/phone	jQuery Mobile Touch (jGrid - Arabic UI)
+ - http://yaruss.org/sb/phone		jQuery Mobile Touch (jGrid - English UI)
+ - http://yaruss.org/faiha/phone	jQuery Mobile Touch (jGrid - Arabic UI)
