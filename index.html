@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=9" /> 
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	
+	<title>Kuwait Index</title>
+
+	<link href="css/style.css" rel="stylesheet" type="text/css" />
+    <link href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.16/themes/redmond/jquery-ui.css" rel="Stylesheet" type="text/css" media="screen" />
+
+    <!-- script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script -->
+    <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.1.min.js" type="text/javascript"></script>
+    <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.16/jquery-ui.min.js" type="text/javascript"></script>
+    <script src="js/jquery.maskedinput-1.3.min.js" type="text/javascript"></script>
+    <script src="js/jQueryRotate.2.1.js" type="text/javascript"></script>
+    <!--script src="js/jquery.transform-0.9.3.min.js" type="text/javascript"></script-->
+    <script src="http://ajax.aspnetcdn.com/ajax/jquery.validate/1.8.1/jquery.validate.min.js" type="text/javascript"></script>
+    
+	<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+	<script type="text/javascript" src="http://ecn.dev.virtualearth.net/mapcontrol/mapcontrol.ashx?v=7.0"></script>
+
+<!--[if IE]><script src="js/excanvas.js"></script><![endif]-->
+
+<!--[if IE]>
+<style>
+	#flexbox { 
+		position: relative;
+		height(580);
+	}
+
+	#flexbox.inner { 
+		height(580);
+	}
+
+	section {
+		position:absolute;
+		top:0;
+		width: 64%;
+		
+		/*float:left;*/
+	    /*margin-right:-999em;*/
+	}
+	
+	aside#left_aside {
+		position:absolute;
+		top:0;
+		/*float:left;*/
+	}
+	
+	aside#right_aside {
+		position:absolute;
+		top:0;
+		/*float:left;*/
+	}
+</style>
+
+<script type="text/javascript">
+
+    $(function () {
+		$(window).resize();
+		//$('section').css('left', $('#left_aside').width() + 12);
+		//$('#right_aside').css('left',  $('#left_aside').width() + $('section').width() + 24);
+	});
+</script>
+
+<![endif]-->
+
+<!--[if lt IE 9]>
+<script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+
+<style>
+	.header, .section, .aside
+    {
+        border: 6px ridge #ccc;
+    }
+    
+    .aside { width: 200px; }
+    
+</style>
+<![endif]-->
+
+
+<script type="text/javascript">
+	var GoogleMap = { map: null, bounds: null, markers:null, listenerHandler: null }
+	var BingMap = { map: null, eventHandlers:null, listenerHandler: null }
+	var currentAccordionItem = null;
+	var viewOptions = {zoom: null, latlon: null}
+
+   	$(window).resize(function() {
+		$('section').css('left', $('#left_aside').width() + 12);
+		$('#right_aside').css('left',  $('#left_aside').width() + $('section').width() + 24);
+   		
+        //$accordion = $('#accordion');
+        $('#accordion').accordion("resize");
+    	//$('#content .inner').append($accordion.height() + '<br/>');
+//        $accordion.parent().height($accordion.parent().height() - 205);
+   	});
+
+   	
+    $(function () {
+    	//$('#host_service').prop({'top': $('#right_side').height() - 40});
+    	if($.browser.mozilla) {
+    	 	$('#flexbox').height(590);
+ 			$('#flexbox .inner').height(590);
+    	 	//alert($('#flexbox').height());
+    	}
+    	 
+        // Setup the ajax indicator  
+        $('#content .inner').append('<div id="ajaxBusy"><img src="images/ajax-loader.gif"/></div>');
+        $('#ajaxBusy').css({ display: "none", margin: "0px",
+        	paddingLeft: "0px", paddingRight: "0px", paddingTop: "0px",	paddingBottom: "0px",
+        	position: "absolute", left: "2px", top: "2px", width: "auto" });
+
+        // Ajax activity indicator bound to ajax start/stop document events
+        $(document).ajaxStart(function () {
+            $('#ajaxBusy').show();
+        }).ajaxStop(function () {
+            $('#ajaxBusy').hide();
+        });
+    	
+        $("#locations li").mouseenter(function() {
+            $el = $(this);
+            currentAccordionItem = $el;
+        	$("#info").find("h3").text($el.text());
+        	$("#info").find("h4").text('');
+            if ($("input[id='radio-google']:checked").val() == 'on') {
+        		GoogleMap.init('#map_canvas', null, 16);
+            	GoogleMap.placeMarkers("xml/" + $el.attr("data-xml"));
+        	} else {
+            	BingMap.init('#map_canvas', null, 16);
+                BingMap.placeMarkers("xml/" + $el.attr("data-xml"));
+        	}
+        });
+    	
+        $accordion = $('#accordion');
+    	
+        $accordion.accordion({ header: "h5", active: 0, collapsible: true, clearStyle: false, fillSpace: true, 
+            create: function (event, ui) {
+                $accordion.css({'display' : 'block'});
+            }
+        });
+
+        $accordion.accordion({
+       		change: function(event, ui) {
+       			clearInfo();
+
+                if ($("input[id='radio-google']:checked").val() == 'on')
+       				initializeGoogleMap();
+                else                	
+       				initializeBingMap();
+       		}
+        });
+        
+		$accordion.accordion("resize");
+       
+        $('#date_from, #date_until').datepicker({
+            showOn: "button",
+            //showOn: 'both',
+            buttonImage: "images/calendar.gif",
+            buttonImageOnly: false,
+            dateFormat: 'dd/mm/yy',
+            numberOfMonths: 1,
+            showButtonPanel: true,
+            /*dateFormat: 'dd-M-yy',*/
+            defaultDate: null
+        });
+
+        $('#date_from, #date_until').datepicker("option", $.datepicker.regional["en-GB"]);
+        $('#date_from, #date_until').mask("99/99/9999");
+
+        $("input[type='radio']").click(function(e) {
+        	//$('#locations li').unbind('mouseenter'); 
+
+        	if (e.target.id == 'radio-google')
+       			initializeGoogleMap();
+        	else
+   				initializeBingMap();
+        });
+
+		//initializeGoogleMap();
+        
+        if ($("input[id='radio-google']:checked").val() == 'on')
+			initializeGoogleMap();
+        else
+			initializeBingMap();
+    });
+
+</script>
+
+<script type="text/javascript">
+	var width = 16;
+	var height = 16;
+	var rad = Math.PI/180;
+	//var angle = 90;
+	var img = new Image();
+	img.src = 'images/marker_red16.png';
+	
+	function RotateCustomIcon(angle) {
+		canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		ctx = canvas.getContext('2d');
+		ctx.translate(width/2, height/2);
+		ctx.rotate((angle%360) * rad);
+		ctx.translate(-width/2, -height/2);
+		ctx.drawImage(img, 0, 0);
+		
+	   	return canvas.toDataURL('image/png');
+	}
+
+function initializeBingMap() {
+	//Create pushpin collection
+	//var pushpins = new Microsoft.Maps.EntityCollection();
+
+	try {
+		GoogleMap.dispose(true);
+	} catch (err) {}
+	
+	BingMap.dispose = function(getCurrentViewOptions) {
+		if (this.map != null) {
+			if (getCurrentViewOptions) {
+				viewOptions.zoom = this.map.getZoom();
+				viewOptions.latlon = this.map.getCenter();
+			}
+			
+			for (var i = 0; i < this.eventHandlers.length; i++) { 
+				Microsoft.Maps.Events.removeHandler(this.eventHandlers[i]);
+			}
+			
+			this.map.dispose();
+			this.map = null;
+		}
+	}
+	
+	BingMap.init = function(selector, latLng, zoom) {
+		var mapOptions = {
+			credentials:"Aiksp0ZnQJVRkVChR3g-s_KaN9xQBZ5Aj7AE4SPY_qzctJhTLnt9_z7nt7kQZZx4",
+	        mapTypeId: Microsoft.Maps.MapTypeId.road,
+	        //zoom: 16,
+			center: latLng,
+	        showDashboard: true,
+	        showMapTypeSelector: true
+	    };
+
+		BingMap.dispose(false);
+		
+		// Initialize the AJAX 7 map
+		this.map = new Microsoft.Maps.Map($(selector)[0], mapOptions);
+		
+		this.eventHandlers = new Array();
+	}
+
+	var minLatitude, maxLatitude, minLongitude, maxLongitude;
+	
+	BingMap.placeMarkers = function(filename) {
+		$.get(filename, function(xml) {
+			//var pushpins = new Microsoft.Maps.EntityCollection();
+			var minLatitude, maxLatitude, minLongitude, maxLongitude;
+			//var count = 0;
+			
+			$(xml).find("marker").each(function() {
+				var name = $(this).find('name').text();
+				var address = $(this).find('address').text();
+				
+				// create a new LatLng point for the marker
+				var lat = $(this).find('lat').text();
+				var lng = $(this).find('lng').text();
+				
+				// Add pushpin to map collection
+				var lat = parseFloat(lat);
+				var lng = parseFloat(lng);
+				BingMap.setMarkers(false, name, address, lat, lng);	// customIcon = false;
+				
+			});
+			
+			BingMap.renderMarkers(false);
+		});
+	}
+	
+	BingMap.setMarkers = function (customIcon, name, address, lat, lng, accuracy, bearing, timestamp) {
+		if (BingMap.map.entities.getLength() == 0) {
+			minLatitude = maxLatitude = lat;
+			minLongitude = maxLongitude = lng;
+		}
+		
+		var pushpin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(lat, lng));
+		
+		var pinInfobox = null, html;
+		if (customIcon)
+			pushpin.setOptions({icon: RotateCustomIcon(bearing),
+								height:16, width:16,
+								anchor:new Microsoft.Maps.Point(8,8) 				
+			});
+		else
+		{
+			pushpin.setOptions({text:(BingMap.map.entities.getLength() / 2 + 1).toString()});
+
+			// Create the info box for the pushpin
+			infoboxOptions = {
+				showCloseButton: false, zIndex: 0, title: name, visible: false,
+				offset:new Microsoft.Maps.Point(10,0), showPointer: true
+			};
+
+	        pinInfobox = new Microsoft.Maps.Infobox(new Microsoft.Maps.Location(lat, lng), infoboxOptions);
+			html='<strong>'+name+'</strong.><br />'+address;
+		}
+
+		handler = Microsoft.Maps.Events.addHandler(pushpin, 'mouseover', function() {
+			if (customIcon) {
+				//timestamp = $.datepicker.parseDate('@', timestamp);   		// UTC timestamp (ms since 01/01/1970)
+	            //var dt = $.datepicker.formatDate('dd/mm/yy', timestamp);   	// 31/12/1999
+	            var dt = new Date(parseInt(timestamp));
+
+	            //var ti = currentTime.getHours() + " : " + currentTime.getMinutes();
+	            
+				$("#info").find("h4").text('Accuracy: ' + accuracy + ' m').end()
+    						.find("span").text (
+    								'Latitude: ' + lat + ' ' +
+    								'Longitude: ' + lng + '0 ' +
+    								'Time: ' + dt.toString()
+    						);
+			} else {
+				pinInfobox.setHtmlContent(html);				
+	        	$("#info").find("h4").text(name).end()
+							.find("span").text(address);
+			}
+	        
+	     	if (pinInfobox != null)
+	        	pinInfobox.setOptions({ visible:true, width: $("#info").width(), height: $("#info").height() });
+		});
+		BingMap.eventHandlers.push(handler);
+		
+		handler = Microsoft.Maps.Events.addHandler(pushpin, 'mouseout', function() {
+			clearInfo();
+			if (!customIcon) {
+		     	if (pinInfobox != null)
+	        		pinInfobox.setOptions({ visible: false });
+			} else {
+	        	$("#info").find("h4").end()
+				.find("span").text(getGpsInfo());
+			}
+		});
+		BingMap.eventHandlers.push(handler);
+		
+        // Hide the info box when the map is moved.
+     	// Add the pushpin and info box to the map
+		BingMap.map.entities.push(pushpin);
+     	if (pinInfobox != null)
+        	BingMap.map.entities.push(pinInfobox);
+		
+		//Determine bounds that display all pushpins
+		if (lat > maxLatitude) {
+			maxLatitude = lat;
+		} else if (lat < minLatitude) {
+			minLatitude = lat;
+		}
+
+		if (lng > maxLongitude) {
+			maxLongitude = lng;
+		} else if (lng < minLongitude) {
+			minLongitude = lng;
+		}
+	}
+	
+	BingMap.renderMarkers = function (customIcon) {
+		//Add pushpins to the map
+		//Add padding to map area so that pushpins are not on the edge
+		minLatitude -= 0.0001;
+		maxLatitude += 0.0001;
+		minLongitude -= 0.0001;
+		maxLongitude += 0.0001;
+		var mapArea = Microsoft.Maps.LocationRect.fromLocations(
+				new Microsoft.Maps.Location(minLatitude, minLongitude),
+				new Microsoft.Maps.Location(maxLatitude, maxLongitude));
+		BingMap.map.setView({
+			bounds : mapArea
+		});
+		
+		if (BingMap.map.entities.getLength() == 1) {
+            var options = BingMap.map.getOptions();
+            options.zoom = 16;
+            BingMap.map.setView(options);
+		}
+		
+		var points;
+		if (viewOptions.zoom != null) {
+            options = BingMap.map.getOptions();
+            options.zoom = viewOptions.zoom;
+            options.center = new Microsoft.Maps.Location(viewOptions.latlon.lat(), viewOptions.latlon.lng());
+            BingMap.map.setView(options);
+		    //$("#info").find("h4").text(viewOptions.zoom.toString());
+			viewOptions.zoom = null;
+		}
+		
+		if (customIcon) {
+			points = new Array();
+			
+			for (var i = 0; i < BingMap.map.entities.getLength(); i++) { 
+				points.push(BingMap.map.entities.get(i).getLocation());
+			}
+			
+	        polyOptions={strokeColor: new Microsoft.Maps.Color(80,0,255,0), strokeThickness: 3};
+	        line = new Microsoft.Maps.Polyline(points, polyOptions);
+	        BingMap.map.entities.push(line);
+		}
+	}
+	
+	BingMap.init('#map_canvas', null, 16);
+	
+	if ($('#accordion').accordion( "option", "active" ) != 0) {
+		if (currentAccordionItem == null)
+		    BingMap.placeMarkers("xml/default.xml");
+		else
+			BingMap.placeMarkers("xml/" + currentAccordionItem.attr("data-xml"));
+	} else {
+		renderBingGlobeMap();
+	}
+}
+
+function renderBingGlobeMap() {
+	clearInfo();
+
+	$("#info").find("h3").text('Kuwait Towers');
+	//$("#info").find("h4").text('Arabian Gulf Street, Kuwait City, Kuwait');
+	
+	pushpin = new Microsoft.Maps.Pushpin(new Microsoft.Maps.Location(0.0,0.0));
+	BingMap.map.entities.push(pushpin);
+    
+	options = BingMap.map.getOptions();
+    options.zoom = 2;
+    BingMap.map.setView(options);
+}
+	
+function initializeGoogleMap() {
+	try {
+		BingMap.dispose(true);
+	} catch (err) {}
+	
+	GoogleMap.dispose = function(getCurrentViewOptions) {
+		if (this.map != null) {
+			if (getCurrentViewOptions) {
+				viewOptions.zoom = this.map.getZoom();
+				viewOptions.latlon = this.map.getCenter();
+				//viewOptions.latlon = this.bounds.getCenter();
+			}
+			
+			for (var i = 0; i < this.markers.length; i++) { 
+				google.maps.event.clearInstanceListeners(this.markers[i]);
+		        this.markers[i].setMap(null); 
+			}
+			
+			this.map.unbindAll();
+			this.map = null;
+		}
+	}
+	
+	GoogleMap.init = function(selector, latLng, zoom) {
+		var mapOptions = {
+			zoom:zoom,
+			center: latLng,
+			mapTypeId: google.maps.MapTypeId.ROADMAP		//HYBRID, TERRAIN
+		}
+	  
+		GoogleMap.dispose(false);
+
+		this.map = new google.maps.Map($(selector)[0], mapOptions);
+		this.bounds = new google.maps.LatLngBounds();
+		this.markers = new Array();
+		//this.markers = new Array();
+
+		this.image = new google.maps.MarkerImage (
+			  	'images/circle_green.png',
+				new google.maps.Size(11,11),
+				new google.maps.Point(0, 0),
+				new google.maps.Point(0,11)
+		);
+
+	}
+
+	GoogleMap.placeMarkers = function(filename) {
+		$.get(filename, function(xml) {
+			$(xml).find("marker").each(function() {
+				var name = $(this).find('name').text();
+				var address = $(this).find('address').text();
+				
+				// create a new LatLng point for the marker
+				var lat = $(this).find('lat').text();
+				var lng = $(this).find('lng').text();
+				GoogleMap.setMarkers(false, name, address, lat, lng);	// customIcon = false;
+			});
+			
+			GoogleMap.renderMarkers(false);
+		});
+	}
+
+	GoogleMap.setMarkers = function (customIcon, name, address, lat, lng, accuracy, bearing, timestamp) {
+		var point = new google.maps.LatLng(parseFloat(lat),parseFloat(lng));
+		
+		// extend the bounds to include the new point
+		GoogleMap.bounds.extend(point);
+		
+		var marker = new google.maps.Marker({
+			position: point,
+			map: GoogleMap.map
+		});
+		
+		GoogleMap.markers.push(marker);
+		
+		var infoWindow, html;
+		if (customIcon) {
+		    (GoogleMap.markers[GoogleMap.markers.length - 1]).setIcon(new google.maps.MarkerImage(RotateCustomIcon(bearing),
+					new google.maps.Size(16,16),
+					new google.maps.Point(0,0),
+					new google.maps.Point(8,8)
+		    ));
+		} else {
+			infoWindow = new google.maps.InfoWindow();
+			html='<strong>'+name+'</strong.><br />'+address;
+		}
+			
+		google.maps.event.addListener(marker, 'mouseover', function() {
+			if (customIcon) {
+	            var dt = new Date(parseInt(timestamp));
+
+				$("#info").find("h4").text('Accuracy: ' + accuracy + ' m').end()
+    						.find("span").text (
+    								'Latitude: ' + lat + ' ' +
+    								'Longitude: ' + lng + '0 ' +
+    								'Time: ' + dt.toString()
+    						);
+			} else {
+				infoWindow.setContent(html);
+				infoWindow.open(GoogleMap.map, marker);
+
+				$("#info").find("h4").text(name).end()
+							.find("span").text(address);
+			}
+			
+		});
+		
+		google.maps.event.addListener(marker, 'mouseout', function() {
+			clearInfo();
+			if (!customIcon) {
+				infoWindow.close();
+			} else {
+	        	$("#info").find("h4").end()
+				.find("span").text(getGpsInfo());
+			}
+		});
+	}
+
+	GoogleMap.renderMarkers = function (customIcon) {
+	if (GoogleMap.markers.length == 1) {
+			//GoogleMap.map.setCenter(new google.maps.LatLng(parseFloat(lat),parseFloat(lng)));
+			GoogleMap.map.setCenter(GoogleMap.bounds.getCenter());
+			GoogleMap.map.setZoom(16);
+		} else {
+			GoogleMap.map.fitBounds(GoogleMap.bounds);
+		}
+		
+		if (viewOptions.zoom != null) {
+			GoogleMap.map.setCenter(new google.maps.LatLng(viewOptions.latlon.latitude, viewOptions.latlon.longitude));
+			GoogleMap.map.setZoom(viewOptions.zoom);
+		    //$("#info").find("h4").text(viewOptions.zoom.toString());
+			viewOptions.zoom = null;
+		}
+		
+		var points;
+		if (customIcon) {
+			points = new Array();
+			for (var i = 0; i < this.markers.length; i++) { 
+				points.push(this.markers[i].position);
+			}
+			
+			var pathOptions = {
+					path: points,
+					strokeColor: '#0000cc',
+					strokeOpacity: 0.4,
+					strokeWeight: 3,
+					map: GoogleMap.map
+			}
+			polyline = new google.maps.Polyline(pathOptions);
+		}
+	}
+	
+	GoogleMap.init('#map_canvas', null, 16);
+
+	var active = $('#accordion').accordion( "option", "active" );
+	//alert(active);
+	if (active != 0) {
+		if (currentAccordionItem == null)
+		    GoogleMap.placeMarkers("xml/default.xml");
+		else
+			GoogleMap.placeMarkers("xml/" + currentAccordionItem.attr("data-xml"));
+	} else {
+		//$('#radio-bing').prop({'disabled':true});
+		//renderPathTracker()
+		renderGoogleGlobeMap();
+	}
+	//$("#locations li:last").trigger("mouseenter");
+}
+
+function clearInfo() {
+	$("#info").find("h4").text('').end()
+		.find("span").text('');
+}
+
+function getGpsInfo() {
+	return "The coordinates came live from an Android based mobile phone's GPS system.";
+}
+
+function renderGoogleGlobeMap() {
+	clearInfo();
+
+	$("#info").find("h3").text('Kuwait Towers');
+	
+	// extend the bounds to include the new point
+	GoogleMap.bounds.extend(new google.maps.LatLng(0.0,0.0));
+	GoogleMap.map.setCenter(GoogleMap.bounds.getCenter());
+	GoogleMap.map.setZoom(2);
+}
+
+function renderPathTracker() {
+	clearInfo();
+	$("#info").find("h4").end()
+	.find("span").text(getGpsInfo());
+	
+	$.ajax({
+		type: "GET",
+        data: {userid:$('#userid').prop('value')},
+		cache: false,
+		//accepts: {'Accept':'application/json'},
+		//contentType: "application/json; charset=utf-8",
+		//contentType: "text/xml; charset=utf-8",
+		//url: 'http://localhost/kuwaitindex/pathtracker.php',
+		url: 'http://yaruss.org/kuwaitindex/pathtracker.php',
+		dataType: "jsonp"
+	}).success(function(data, textStatus) {
+        	if ($("input[id='radio-google']:checked").val() == 'on')
+    			GoogleMap.init('#map_canvas', null, 16);
+        	else
+        		BingMap.init('#map_canvas', null, 16);
+
+        	currentAccordionItem = null;
+			
+			var items = [];
+			$.each(data, function(key, val) {
+                if (data.length != 1) {
+					if (val.accuracy < 50) {
+	                	if ($("input[id='radio-google']:checked").val() == 'on')
+							GoogleMap.setMarkers(true, "", "", val.latitude, val.longitude, val.accuracy, val.bearing, val.time);	// customIcon = true;
+						else
+							BingMap.setMarkers(true, "", "", val.latitude, val.longitude, val.accuracy, val.bearing, val.time);		// customIcon = true;
+					}
+                } else {
+            	  	alert(val.result);
+                }
+				//items.push('<li id="' + key + '">' + val.latitude + " / " + val.longitude + '</li>');
+			});
+			
+			viewOptions.zoom = null;
+            if ($("input[id='radio-google']:checked").val() == 'on')
+				GoogleMap.renderMarkers(true);
+            else
+            	BingMap.renderMarkers(true);
+	}).error(function(data, textStatus) {
+	  	alert(textStatus);
+	});
+}
+
+</script>
+
+<script type="text/javascript">
+    // pre-submit callback 
+    function showRequest(formData, jqForm, options) {
+        // formData is an array; here we use $.param to convert it to a string to display it 
+        // but the form plugin does this for you automatically when it submits the data 
+        var queryString = $.param(formData);
+
+        // jqForm is a jQuery object encapsulating the form element. To access the 
+        // DOM element for the form do this: 
+        // var formElement = jqForm[0]; 
+
+        alert('About to submit: \n\n' + queryString);
+
+        // here we could return false to prevent the form from being submitted; 
+        // returning anything other than false will allow the form submit to continue 
+        return true;
+    } 
+
+    // post-submit callback 
+    function showResponse(responseJson, statusText, xhr, $form) {
+        if (responseJson.result == 'success') {
+            if (window.console) window.console.log('success');
+            
+            if ($("input[id='radio-google']:checked").val() == 'on')
+        		GoogleMap.init('#map_canvas', null, 16);
+            else
+            	BingMap.init('#map_canvas', null, 16);
+
+        	var items = [];
+			$.each(responseJson, function(key, val) {
+				if (val.accuracy < 50) {
+	                if ($("input[id='radio-google']:checked").val() == 'on')
+						GoogleMap.setMarkers(true, "", "", val.latitude, val.longitude, val.accuracy, val.bearing, val.time);	// customIcon = true;
+					else
+						BingMap.setMarkers(true, "", "", val.latitude, val.longitude, val.accuracy, val.bearing, val.time);		// customIcon = true;
+				}
+			});
+			
+			viewOptions.zoom = null;
+            if ($("input[id='radio-google']:checked").val() == 'on')
+				GoogleMap.renderMarkers(true);
+            else
+            	BingMap.renderMarkers(true);
+
+        } else {
+            if (window.console) window.console.log('failed');
+    	  	alert(statusText);
+        }
+    } 
+
+$(function () {
+    var options = {
+        url: '',    // override for form's 'action' attribute
+        type: 'get',               // 'get' or 'post', override for form's 'method' attribute
+        dataType: 'jsonp',           // 'xml', 'script', or 'json' (expected server response type)
+        //beforeSubmit: showRequest,  // pre-submit callback
+        //success: showResponse       // post-submit callback
+        // other available options:
+        //target: '#output',        // target element(s) to be updated with server response
+        //clearForm: true           // clear all form fields after successful submit
+        //resetForm: true           // reset the form after successful submit
+        // $.ajax options can be used here too, for example:
+        //timeout: 3000
+    };
+     
+    $('#formTracker').validate({
+        //success: "valid",
+        //submitHandler: function() { alert("Submitted!") },
+        
+        submitHandler: function(form) {
+        	renderPathTracker();
+        	// inside event callbacks 'this' is the DOM element so we first
+            // wrap it in a jQuery object and then invoke ajaxSubmit
+            //$(form).ajaxSubmit(options); 
+            //form.submit();
+            // return false to prevent normal browser submit and page navigation
+            return false; 
+        },
+
+        //errorPlacement: function (error, element) {
+        //    error.appendTo(element.parent("td").next("td"));
+        //},
+
+        rules: {
+            'userid': {
+                required: true,
+                number: false,
+                maxlength: 8
+                //letters: true
+            },
+            'date_from': {
+                required: true,
+                customDateValidator: true
+            },
+            'date_until': {
+                required: true,
+                customDateValidator: true
+            }
+        },
+        messages: {
+            'userid': {
+                required: 'The value field cannot be blank',
+                number: 'Please enter numbers only',
+                maxlength: jQuery.format('The maximum value is {0} digits')
+            },
+            'date_from': {
+                required: 'The date field cannot be blank',
+                date: 'Please enter a valid date'
+            },
+            'date_until': {
+                required: 'The date field cannot be blank',
+                date: 'Please enter a valid date'
+            }
+        }
+    });
+
+    $.validator.addMethod('letters', function (value) {
+        return value.match(/^[- a-zA-Z]+$/);
+    });
+
+    $.validator.addMethod('customDateValidator',
+        function (value, element) {
+            // parseDate throws exception if the value is invalid
+            try { $.datepicker.parseDate('dd/mm/yy', value); return true; }
+            catch (e) { return false; }
+        }, "Please enter a valid date"
+    );
+});
+</script>
+
+</head>
+<body>
+	<div id="wrapper">
+		<div class="outer">
+			<header class="header">
+				<div class="inner" style="border: 0px solid green">
+					<div style="padding-top: 6px; position: relative; border: 0px solid blue">
+						<h3>
+							<em>Still under construction...,</em>
+						</h3>
+						<h4>
+							<em>but you can get an idea.</em>
+						</h4>
+					</div>
+					<div style="text-align:left; position: absolute; top:0px; border:0px solid red">  	
+						<!-- Place this tag where you want the +1 button to render -->
+						<g:plusone annotation="inline"></g:plusone>
+						
+						<!-- Place this render call where appropriate -->
+						<script type="text/javascript">
+						  (function() {
+						    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+						    po.src = 'https://apis.google.com/js/plusone.js';
+						    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+						  })();
+						</script>
+					</div>
+					
+					<div id="radio" style="position: absolute; bottom:2px; right:5px; border: 0px solid blue">
+						<input type="radio" id="radio-google" name="radio" checked="checked" /><label for="radio-google">Google Maps</label>
+						<input type="radio" id="radio-bing" name="radio" /><label for="radio-bing">Bing Maps</label>
+					</div>
+														
+				</div>
+			</header>
+			<div id="flexbox">
+				<aside id="left_aside" class="aside">
+					<div class="inner">
+						<div style="height: inherit">
+							<div id="accordion" style="display: none;">
+								<div>
+									<div>
+										<h5>Path tracker</h5>
+										<div style="padding: 8px;">
+											<form id="formTracker" style="margin-top:24px; display:block;" method="get" action="">
+												<fieldset>
+													<legend>Criterion</legend>
+											        <div>
+											        <table style="table-layout:fixed; border-collapse: separate;">
+											        <tr>
+														<td><label for="userid">Id</label></td>
+														<td><input id="userid" name="userid" type="text" style="width:65px;" value="b27669"/></td> <!-- b27669 31f007 -->
+													</tr>
+													<tr style="line-height: 30px;"></tr>
+											        <tr>
+														<td><label for="date_from">From</label></td>
+														<td><input id="date_from" name="date_from" type="text" style="width:65px; margin-right:4px" value="24/11/2011"/></td>
+													</tr>
+													<tr style="line-height: 30px;"></tr>
+											        <tr>
+														<td><label for="date_until">Until</label></td>
+														<td><input id="date_until" name="date_until" type="text" style="width:65px; margin-right:4px" value="24/11/2011"/></td>
+													</tr>
+											        <tr><td></td>
+														<td><input class="submit" type="submit" id="submit" value="Submit" style="margin-top:20px" /></td>
+													</tr>
+													</table>
+											        </div>
+												</fieldset>
+											</form>
+										</div>
+									</div>
+									<div>
+										<h5>Car Dealers</h5>
+										<div style="padding: 8px; border: 0px solid blue">
+											<ul id="locations">
+												<li data-xml="kuwait-nissan.xml">Nissan (Al-Babtain)</li>
+												<li data-xml="kuwait-toyota.xml">Toyota (Al-Sayer)</li>
+												<li data-xml="kuwait-nissan.xml">Citroen Workshop</li>
+
+												<!-- li data-geo-lat="29.33245333529" data-geo-long="47.982801511853" style="display:none"
+													data-geo-info="3rd Ring Road, Adeliya, Kuwait">
+													The Public Authority for Applied Education and Training</li-->
+											</ul>
+										</div>
+									</div>
+									<div>
+										<h5>Ministries</h5>
+										<div style="padding: 8px;">&nbsp;</div>
+									</div>
+									<div>
+										<h5>Investment Companies</h5>
+										<div style="padding: 8px;">&nbsp;</div>
+									</div>
+									<div>
+										<h5>Banks</h5>
+										<div style="padding: 8px;">&nbsp;</div>
+									</div>
+									<div>
+										<h5>Oil Sector Companies</h5>
+										<div style="padding: 8px;">&nbsp;</div>
+									</div>
+									<div>
+										<h5>Restaurants</h5>
+										<div style="padding: 8px;">&nbsp;</div>
+									</div>
+									<div>
+										<h5>About me</h5>
+										<div style="padding: 8px;">
+											<ul id="locations">
+												<li data-xml="my-friends.xml">Me &amp; my friends</li>
+												<li data-xml="my-work.xml" style="line-height:normal">The place, I bestowed faithfully many years</li>
+
+												<!-- li data-geo-lat="29.33245333529" data-geo-long="47.982801511853" style="display:none"
+													data-geo-info="3rd Ring Road, Adeliya, Kuwait">
+													The Public Authority for Applied Education and Training</li-->
+											</ul>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</aside>
+				<section id="content" class="section">
+					<div class="inner">
+						<div id="map_canvas" style="width: 100%; height: 100%;"></div>
+					</div>
+				</section>
+				<aside id="right_aside" class="aside">
+					<div class="inner">
+						<h2 style="padding-top: 6px">Kuwait</h2>
+						<div
+							style="border: 1px solid black; margin: 0 auto; width: 106px; height: 124px">
+							<img src="images/Kuwaittower-102x120.jpg" alt="Kuwait towers"
+								style="padding: 2px; width: 102px; height: 120px" />
+						</div>
+						<div id="info" style="padding-top: 6px">
+							<div>
+								<h3>Kuwait Towers</h3>
+								<hr/>
+								<div style="position:absolute; width:100%; text-align:center;">
+									<img src="images/htc.jpg" style="opacity: 0.5;"/>
+								</div>
+								<br/><br/><br/>
+								<div style="position:absolute; width:100%; text-align:center;">
+									<h4>Arabian Gulf Street, Kuwait City, Kuwait</h4>
+									<div style="width:72%; margin: 0 auto; border:0px solid blue"><span></span></div>
+								</div>
+							</div>
+						</div>
+ 						
+						<div id="host_service" style="border:0px solid red; width:inherit;">
+<!--
+				            <div style="text-align:center">
+								<script type="text/javascript">
+									google_ad_client = "ca-pub-0587191083094896";
+									/* Adeliya WP */
+									google_ad_slot = "2386721195";
+									google_ad_width = 180;
+									google_ad_height = 150;
+								</script>
+								<script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js"></script>
+				    		</div>
+-->						
+							<div style="text-align:left; padding-left:3px;">
+								<a href="http://www.000webhost.com/" target="_blank">
+									<img src="http://www.000webhost.com/images/80x15_powered.gif" alt="Web Hosting" width="80" height="15" border="0" />
+								</a>
+							</div>
+						</div>
+					</div>
+				</aside>
+			</div>	<!--  flexbox -->
+		</div>	<!--  outer -->
+	</div>
+	<footer id="footer"> Copyright &copy; 2011 Telecom &amp;
+		Information Technology Group (TiTG). All rights reserved. 
+	</footer>
+	
+</body>
+</html>
