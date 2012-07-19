@@ -9,8 +9,8 @@
 	 - ActiveX Control, Video streaming, Microsoft C++, DirectX technology, Public Key Infrastructure
 
 	Mobile version:
-	 - http://yaruss.org/sb/phone		jQuery Mobile Touch (jGrid - English UI)
-	 - http://yaruss.org/faiha/phone	jQuery Mobile Touch (jGrid - Arabic UI)
+	 - http://yaruss.org/sb/phone		jQuery Touch (jGrid - English UI)
+	 - http://yaruss.org/faiha/phone	jQuery Touch (jGrid - Arabic UI)
 
 2. One more web based application that has an extensive JavaScript and jQuery support http://yaruss.org/kuwaitindex
 	It is using Google and Bing Map services. 
